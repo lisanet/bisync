@@ -1,0 +1,183 @@
+#!/bin/zsh
+# Created 2024 by Simone Karin Lehmann
+# (c) BSD 2-clause license
+
+
+progname="bisync"
+logfile="/tmp/$progname"log
+dry_run=false
+iconv=
+
+LOCAL_DELETES="/tmp/local_del.txt"
+REMOTE_DELETES="/tmp/remote_del.txt"
+PREV_RUN=
+
+# unique statusfile for syncs. 
+SUPPORT="$HOME/Library/Application Support/de.lisanet.bisync"
+UUID_FILE="bisync.uuid"
+
+# if we have /usr/local/bin/mailscript, define this
+ACCOUNT=
+ADDRESS=
+
+
+function show_help() {
+    echo "$progname - bidirectional sync of two directories."
+    echo
+    echo "Usage: $progname -s source_path -t target_path [options]"
+    echo
+    echo "Optons:"
+    echo "  -s, --source-path PATH    path to source directory (no trailing /)"
+    echo "  -t, --target-path PATH    path to desitiantion directory (no trailing /)"
+    echo "  -n, --dry-run             simulation"
+    echo "  -h, --help                this help screen"
+    echo
+    echo "$progname does a bidirectional sync of both specified direcotries. In fact, it's irrelevant "
+    echo "which directory is the source and which is the target. The result after a sync will be identical."
+    echo
+    echo "$progname therefore takes steps to track files which have been deleted after the previous sync"
+    echo "by comparing the timestamps of the still available file in the other path of the sync with the"
+    echo "timestamp of the previous sync run. Information about the sync and its timestamp are recorded in"
+    echo "the Application Support directory files. If those support files are missing the next sync will"
+    echo "be a 'first run', meaning that no files will be deleted and missing files on one side, will be "
+    echo "copied over from the other side."
+    exit 1
+}
+
+
+# generate a unique hash, regardless which side is source or target
+function genhash() {
+    # remove possible / at end of path
+    a=${1%/}
+    b=${2%/}
+    # sort paths and hash them so it's unique
+    echo "$a\n$b" | sort | md5
+}
+
+
+# delete files only if they are not modified on the other side
+function delete_files() {
+    local _target_path="$1"
+    local _file_list="$2"
+    local _timestamp="$3"
+
+    $dry_run && return
+
+    olddir=$(pwd)
+    cd "$_target_path"
+    # the file list only contains files already deleted on one side
+    cat "$_file_list" | while read x file_path; do
+        # timestamps of directories are changed, if a file in that dir is deleted. So we can not
+        # rely on the timestamp of a dir to see if we need to delete it.
+        # But since the file list only contains dirs that have to be deleted, we set timestamp=0
+        [ -f "$file_path" ] && file_timestamp=$(stat -f %m "$file_path") || file_timestamp=0
+
+        # compare timestamps
+        [ $file_timestamp -lt $_timestamp ] && rm -df "$file_path"
+    done
+    cd "$olddir"
+}
+
+#### main ###
+
+while [ $# -gt 0 ]; do
+    case $1 in
+        -s|--source-path)
+            source_path="$2"
+            shift 2
+            ;;
+        -t|--target-path)
+            target_path="$2"
+            shift 2
+            ;;
+        -n|--dry-run)
+            dry_run=true
+            shift
+            ;;
+        -h|--help)
+            show_help
+            ;;
+        *)  echo "unknown option: $1"
+            echo "More help with: $progname -h"
+            exit 1
+            ;;
+    esac
+done
+
+# Prüfe ob alle erforderlichen Parameter gesetzt sind
+if [[ -z "$source_path" || -z "$target_path" ]]; then
+    echo "Errot: missing path(s)"
+    show_help
+fi
+
+# Prüfe ob die Dateien/Verzeichnisse existieren
+if [ ! -d "$source_path" ]; then
+    echo "Erro: no such directory: $source_path"
+    exit 1
+fi
+
+if [ ! -d "$target_path" ]; then
+    echo "Error: no such directory $target_path"
+    exit 1
+fi
+
+
+if [ ! -e "$SUPPORT/$UUID_FILE" ]; then
+    mkdir -p "$SUPPORT"
+    echo "# line format: hash   uuid   sync paths" > "$SUPPORT/$UUID_FILE"
+fi
+
+# get the unique hash for this sync pair of paths
+uhash=$(genhash "$source_path" "$target_path")
+# get unique status file of previous run
+grep -s "$uhash" "$SUPPORT/$UUID_FILE" | read hash UUID syncdirs
+if [ -z "$UUID" ] && ! $dry_run ; then
+    # save info of unique status file
+    UUID=$(uuidgen)
+    echo "$uhash  $UUID  Sync: $source_path <--> $target_path" >> "$SUPPORT/$UUID_FILE"
+fi
+PREV_RUN="$SUPPORT/$UUID.timestamp"
+
+
+# read timestamp of previous sync
+[ -s "$PREV_RUN" ] && timestamp=$(cat "$PREV_RUN") || timestamp=0
+
+# get file list of files deleted of each side
+rm -f "$LOCAL_DELETES"
+rm -f "$REMOTE_DELETES"
+rsync -av -n --delete "$source_path/" "$target_path" | grep "deleting" > "$LOCAL_DELETES"
+rsync -av -n --delete "$target_path/" "$source_path" | grep "deleting" > "$REMOTE_DELETES"
+
+
+
+$dry_run && echo "=== DRY RUN ==="
+# if there are deleted files, test if the are modified (=newer) on the other side and deleted them if not
+[ -s "$LOCAL_DELETES" ] && delete_files "$target_path" "$LOCAL_DELETES" "$timestamp"
+[ -s "$REMOTE_DELETES" ] && delete_files "$source_path" "$REMOTE_DELETES" "$timestamp"
+
+
+# now we can do a regular rsync without --delete
+$dry_run && dry="-n" || dry=""
+# Mac specific: use iconv, if availabele to maximize compatibility
+if [ "$(uname)" = "Darwin" ]; then
+    rsync --version | grep -q "iconv" && iconv="--iconv=utf-8-mac" || iconv=""
+fi
+rsync -avuz $iconv $dry "$source_path/" "$target_path" 2>"$logfile"
+rsync -avuz $iconv $dry "$target_path/" "$source_path" 2>>"$logfile"
+
+# mail result of sync
+if [ -e "/usr/local/bin/mailscript" ]; then
+    cat "$logfile" | /usr/local/bin/mailscript -s "[$progname] error in syncing" -a "$ACCOUNT" -t $ADDRESS
+    [ -s "$logfile" ] || ( echo "Success." | /usr/local/bin/mailscript -s "[$progname] successfully finished syncing" -a "$ACCOUNT" -t $ADDRESS)
+fi
+
+# update timestamp of sync
+if ! $dry_run ; then
+    # aktualisierupdatee timestamp
+    date "+%s" > "$PREV_RUN"
+    # no more need for temp files
+    rm -f "$LOCAL_DELETES"
+    rm -f "$REMOTE_DELETES"
+fi
+
+
