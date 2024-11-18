@@ -16,10 +16,6 @@ PREV_RUN=
 SUPPORT="$HOME/Library/Application Support/de.lisanet.bisync"
 UUID_FILE="bisync.uuid"
 
-# if we have /usr/local/bin/mailscript, define this
-ACCOUNT=
-ADDRESS=
-
 
 function show_help() {
     echo "$progname - bidirectional sync of two directories."
@@ -165,11 +161,6 @@ fi
 rsync -avuz $iconv $dry "$source_path/" "$target_path" 2>"$logfile"
 rsync -avuz $iconv $dry "$target_path/" "$source_path" 2>>"$logfile"
 
-# mail result of sync
-if [ -e "/usr/local/bin/mailscript" ]; then
-    cat "$logfile" | /usr/local/bin/mailscript -s "[$progname] error in syncing" -a "$ACCOUNT" -t $ADDRESS
-    [ -s "$logfile" ] || ( echo "Success." | /usr/local/bin/mailscript -s "[$progname] successfully finished syncing" -a "$ACCOUNT" -t $ADDRESS)
-fi
 
 # update timestamp of sync
 if ! $dry_run ; then
