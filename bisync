@@ -46,6 +46,9 @@ function genhash() {
     # remove possible / at end of path
     a=${1%/}
     b=${2%/}
+    # make absolute
+    a=${a:a}
+    b=${b:a}
     # sort paths and hash them so it's unique
     echo "$a\n$b" | sort | md5
 }
