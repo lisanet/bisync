@@ -8,8 +8,8 @@ logfile="/tmp/$progname"log
 dry_run=false
 iconv=
 
-LOCAL_DELETES="/tmp/local_del.txt"
-REMOTE_DELETES="/tmp/remote_del.txt"
+LOCAL_DELETES=$(mktemp /tmp/local_del.XXXXXX)
+REMOTE_DELETES=$(mktemp /tmp/remote_del.XXXXXX)
 PREV_RUN=
 
 # unique statusfile for syncs. 
