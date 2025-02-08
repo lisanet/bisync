@@ -150,8 +150,6 @@ PREV_RUN="$SUPPORT/$UUID.timestamp"
 [ -s "$PREV_RUN" ] && timestamp=$(cat "$PREV_RUN") || timestamp=0
 
 # get file list of files deleted of each side
-rm -f "$LOCAL_DELETES"
-rm -f "$REMOTE_DELETES"
 rsync -av -n --delete "$source_path/" "$target_path" | grep "deleting" > "$LOCAL_DELETES"
 rsync -av -n --delete "$target_path/" "$source_path" | grep "deleting" > "$REMOTE_DELETES"
 
@@ -177,9 +175,6 @@ rsync -avuz $iconv $dry "$target_path/" "$source_path" 2>>"$logfile"
 if ! $dry_run ; then
     # aktualisierupdatee timestamp
     date "+%s" > "$PREV_RUN"
-    # no more need for temp files
-    rm -f "$LOCAL_DELETES"
-    rm -f "$REMOTE_DELETES"
 fi
 
 
