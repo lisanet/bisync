@@ -8,8 +8,6 @@ logfile="/tmp/$progname"log
 dry_run=false
 iconv=
 
-LOCAL_DELETES=$(mktemp /tmp/local_del.XXXXXX)
-REMOTE_DELETES=$(mktemp /tmp/remote_del.XXXXXX)
 PREV_RUN=
 
 # unique statusfile for syncs. 
@@ -128,6 +126,9 @@ if [ ! -d "$target_path" ]; then
     exit 1
 fi
 
+# generate temp files
+LOCAL_DELETES=$(mktemp /tmp/local_del.XXXXXX)
+REMOTE_DELETES=$(mktemp /tmp/remote_del.XXXXXX)
 
 if [ ! -e "$SUPPORT/$UUID_FILE" ]; then
     mkdir -p "$SUPPORT"
