@@ -40,6 +40,14 @@ function show_help() {
     exit 1
 }
 
+# cleanup function to remove temp files
+cleanup() {
+    rm -f "$LOCAL_DELETES" "$REMOTE_DELETES"
+}
+
+# use trap to call cleanup on EXIT, SIGINT and SIGTERM
+trap cleanup EXIT SIGINT SIGTERM
+
 
 # generate a unique hash, regardless which side is source or target
 function genhash() {
