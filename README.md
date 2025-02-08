@@ -1,4 +1,4 @@
-# bisync
+# bisync - a bidrectional sync script
 
 **bisync** is a shell script that provides bidirectional synchronization of two directories. It uses `rsync` to copy files in both directions while tracking file deletions between sync runs. Files are only removed on one side if they have not been modified on the other side since the last sync. This ensures that deletions are applied safely.
 
