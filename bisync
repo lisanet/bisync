@@ -137,7 +137,8 @@ fi
 # get the unique hash for this sync pair of paths
 uhash=$(genhash "$source_path" "$target_path")
 # get unique status file of previous run
-grep -s "$uhash" "$SUPPORT/$UUID_FILE" | read hash UUID syncdirs
+UUID=$(awk '/'$uhash'/ { print $2 }' "$SUPPORT/$UUID_FILE")
+
 if [ -z "$UUID" ] && ! $dry_run ; then
     # save info of unique status file
     UUID=$(uuidgen)
