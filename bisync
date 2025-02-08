@@ -43,9 +43,6 @@ cleanup() {
     rm -f "$LOCAL_DELETES" "$REMOTE_DELETES"
 }
 
-# use trap to call cleanup on EXIT, SIGINT and SIGTERM
-trap cleanup EXIT SIGINT SIGTERM
-
 
 # generate a unique hash, regardless which side is source or target
 function genhash() {
@@ -129,6 +126,10 @@ fi
 # generate temp files
 LOCAL_DELETES=$(mktemp /tmp/local_del.XXXXXX)
 REMOTE_DELETES=$(mktemp /tmp/remote_del.XXXXXX)
+
+# use trap to call cleanup on EXIT, SIGINT and SIGTERM
+trap cleanup EXIT SIGINT SIGTERM
+
 
 if [ ! -e "$SUPPORT/$UUID_FILE" ]; then
     mkdir -p "$SUPPORT"
