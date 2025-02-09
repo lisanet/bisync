@@ -144,7 +144,7 @@ UUID=$(awk '/'$uhash'/ { print $2 }' "$SUPPORT/$UUID_FILE")
 if [ -z "$UUID" ] && ! $dry_run ; then
     # save info of unique status file
     UUID=$(uuidgen)
-    echo "$uhash  $UUID  Sync: $source_path <--> $target_path" >> "$SUPPORT/$UUID_FILE"
+    echo "$uhash  $UUID  '${source_path:a}'  '${target_path:a}'" >> "$SUPPORT/$UUID_FILE"
 fi
 PREV_RUN="$SUPPORT/$UUID.timestamp"
 
