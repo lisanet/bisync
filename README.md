@@ -63,7 +63,7 @@ The script creates temporary files using mktemp for storing deletion lists. A tr
 
 ### Clone the Repository
 ```
-git clone https://github.com/yourusername/bisync.git
+git clone https://github.com/lisanet/bisync.git
 ```
 
 ### Run the install script
